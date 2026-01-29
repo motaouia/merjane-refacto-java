@@ -24,10 +24,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/orders")
 public class MyController {
     @Autowired
-    private ProductService ps;
+    private  ProductService ps;
 
     @Autowired
-    private ProductRepository pr;
+    private  ProductRepository pr;
 
     @Autowired
     private OrderRepository or;
@@ -37,8 +37,7 @@ public class MyController {
     public ProcessOrderResponse processOrder(@PathVariable Long orderId) {
         Order order = or.findById(orderId).get();
         System.out.println(order);
-        List<Long> ids = new ArrayList<>();
-        ids.add(orderId);
+        
         Set<Product> products = order.getItems();
         for (Product p : products) {
             if (p.getType().equals("NORMAL")) {
