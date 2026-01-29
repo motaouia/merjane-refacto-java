@@ -19,6 +19,10 @@ public class ProductService {
 		this.productRepository = productRepository;
 		this.notificationService = notificationService;
 	}
+	
+	 public Product save(Product product) {
+	        return productRepository.save(product);
+	    }
 
 	public void notifyDelay(int leadTime, Product p) {
 		p.setLeadTime(leadTime);
