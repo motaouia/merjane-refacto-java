@@ -6,6 +6,7 @@ import java.util.Set;
 import org.springframework.stereotype.Service;
 
 import com.nimbleways.springboilerplate.entities.Product;
+import com.nimbleways.springboilerplate.entities.ProductType;
 import com.nimbleways.springboilerplate.repositories.ProductRepository;
 
 @Service
@@ -30,35 +31,25 @@ public class ProductService {
 	}
 
 	public void handleSeasonalProduct(Product p) {
-		if (LocalDate.now().plusDays(p.getLeadTime()).isAfter(p.getSeasonEndDate())) {
+		if (today().plusDays(p.getLeadTime()).isAfter(p.getSeasonEndDate())) {
 			notificationService.sendOutOfStockNotification(p.getName());
 			p.setAvailable(0);
-			productRepository.save(p);
-		} else if (p.getSeasonStartDate().isAfter(LocalDate.now())) {
+			save(p);
+		} else if (p.getSeasonStartDate().isAfter(today())) {
 			notificationService.sendOutOfStockNotification(p.getName());
-			productRepository.save(p);
 		} else {
 			notifyDelay(p.getLeadTime(), p);
 		}
 	}
 
-	public void handleExpiredProduct(Product p) {
-		if (isAvailable(p) && isNotExpired(p)) {
-			decrementAndSave(p);
-			return;
-		}
-		notificationService.sendExpirationNotification(p.getName(), p.getExpiryDate());
-		p.setAvailable(0);
-		save(p);
-
-	}
+	
 
 	public void processProducts(Set<Product> products) {
 		for (Product p : products) {
-			switch (p.getType()) {
-			case "NORMAL" -> handleNormal(p);
-			case "SEASONAL" -> handleSeasonal(p);
-			case "EXPIRABLE" -> handleExpirable(p);
+			switch (ProductType.from(p.getType())) {
+			case NORMAL -> handleNormal(p);
+			case SEASONAL -> handleSeasonal(p);
+			case EXPIRABLE -> handleExpiredProduct(p);
 			}
 		}
 	}
@@ -72,8 +63,8 @@ public class ProductService {
 	}
 
 	private void handleSeasonal(Product p) {
-		boolean inSeason = LocalDate.now().isAfter(p.getSeasonStartDate())
-				&& LocalDate.now().isBefore(p.getSeasonEndDate());
+		LocalDate today = today();
+		boolean inSeason = today.isAfter(p.getSeasonStartDate()) && today.isBefore(p.getSeasonEndDate());
 
 		if (inSeason && isAvailable(p)) {
 			decrementAndSave(p);
@@ -81,14 +72,16 @@ public class ProductService {
 			handleSeasonalProduct(p);
 		}
 	}
-
-	private void handleExpirable(Product p) {
-
+	
+	public void handleExpiredProduct(Product p) {
 		if (isAvailable(p) && isNotExpired(p)) {
 			decrementAndSave(p);
-		} else {
-			handleExpiredProduct(p);
+			return;
 		}
+		notificationService.sendExpirationNotification(p.getName(), p.getExpiryDate());
+		p.setAvailable(0);
+		save(p);
+
 	}
 
 	private void decrementAndSave(Product p) {
@@ -97,10 +90,14 @@ public class ProductService {
 	}
 
 	private boolean isNotExpired(Product p) {
-		return p.getExpiryDate().isAfter(LocalDate.now());
+		return p.getExpiryDate().isAfter(today());
 	}
 
 	private boolean isAvailable(Product p) {
 		return p.getAvailable() > 0;
+	}
+
+	private LocalDate today() {
+		return LocalDate.now();
 	}
 }
