@@ -26,8 +26,6 @@ public class ProductService {
 	}
 
 	public void notifyDelay(int leadTime, Product p) {
-		p.setLeadTime(leadTime);
-		productRepository.save(p);
 		notificationService.sendDelayNotification(leadTime, p.getName());
 	}
 
@@ -45,16 +43,14 @@ public class ProductService {
 	}
 
 	public void handleExpiredProduct(Product p) {
-		if (p.getAvailable() > 0 && p.getExpiryDate().isAfter(LocalDate.now())) {
-			p.setAvailable(p.getAvailable() - 1);
-			// productRepository.save(p);
-		} else {
-			notificationService.sendExpirationNotification(p.getName(), p.getExpiryDate());
-			p.setAvailable(0);
-			// productRepository.save(p);
+		if (isAvailable(p) && isNotExpired(p)) {
+			decrementAndSave(p);
+			return;
 		}
-
+		notificationService.sendExpirationNotification(p.getName(), p.getExpiryDate());
+		p.setAvailable(0);
 		save(p);
+
 	}
 
 	public void processProducts(Set<Product> products) {
@@ -79,7 +75,7 @@ public class ProductService {
 		boolean inSeason = LocalDate.now().isAfter(p.getSeasonStartDate())
 				&& LocalDate.now().isBefore(p.getSeasonEndDate());
 
-		if (inSeason && p.getAvailable() > 0) {
+		if (inSeason && isAvailable(p)) {
 			decrementAndSave(p);
 		} else {
 			handleSeasonalProduct(p);
@@ -87,9 +83,8 @@ public class ProductService {
 	}
 
 	private void handleExpirable(Product p) {
-		boolean notExpired = p.getExpiryDate().isAfter(LocalDate.now());
 
-		if (p.getAvailable() > 0 && notExpired) {
+		if (isAvailable(p) && isNotExpired(p)) {
 			decrementAndSave(p);
 		} else {
 			handleExpiredProduct(p);
@@ -99,5 +94,13 @@ public class ProductService {
 	private void decrementAndSave(Product p) {
 		p.setAvailable(p.getAvailable() - 1);
 		save(p);
+	}
+
+	private boolean isNotExpired(Product p) {
+		return p.getExpiryDate().isAfter(LocalDate.now());
+	}
+
+	private boolean isAvailable(Product p) {
+		return p.getAvailable() > 0;
 	}
 }
