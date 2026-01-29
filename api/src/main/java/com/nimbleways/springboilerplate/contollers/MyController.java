@@ -33,14 +33,19 @@ public class MyController {
 	@ResponseStatus(HttpStatus.OK)
 	public ProcessOrderResponse processOrder(@PathVariable Long orderId) {
 		Order order = orderService.getOrderById(orderId);
-		System.out.println(order);
 
 		Set<Product> products = order.getItems();
+		processProducts(products);
+
+		return new ProcessOrderResponse(order.getId());
+	}
+
+	private void processProducts(Set<Product> products) {
+
 		for (Product p : products) {
 			if (p.getType().equals("NORMAL")) {
 				if (p.getAvailable() > 0) {
-					p.setAvailable(p.getAvailable() - 1);
-					productService.save(p);
+					decrementAndSave(p);
 				} else {
 					int leadTime = p.getLeadTime();
 					if (leadTime > 0) {
@@ -51,21 +56,23 @@ public class MyController {
 				// Add new season rules
 				if ((LocalDate.now().isAfter(p.getSeasonStartDate()) && LocalDate.now().isBefore(p.getSeasonEndDate())
 						&& p.getAvailable() > 0)) {
-					p.setAvailable(p.getAvailable() - 1);
-					productService.save(p);
+					decrementAndSave(p);
 				} else {
 					productService.handleSeasonalProduct(p);
 				}
 			} else if (p.getType().equals("EXPIRABLE")) {
 				if (p.getAvailable() > 0 && p.getExpiryDate().isAfter(LocalDate.now())) {
-					p.setAvailable(p.getAvailable() - 1);
-					productService.save(p);
+					decrementAndSave(p);
 				} else {
 					productService.handleExpiredProduct(p);
 				}
 			}
 		}
 
-		return new ProcessOrderResponse(order.getId());
+	}
+
+	private void decrementAndSave(Product p) {
+		p.setAvailable(p.getAvailable() - 1);
+		productService.save(p);
 	}
 }
