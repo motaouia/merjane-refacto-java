@@ -1,6 +1,5 @@
 package com.nimbleways.springboilerplate.contollers;
 
-import java.time.LocalDate;
 import java.util.Set;
 
 import org.springframework.http.HttpStatus;
@@ -35,44 +34,10 @@ public class MyController {
 		Order order = orderService.getOrderById(orderId);
 
 		Set<Product> products = order.getItems();
-		processProducts(products);
+		productService.processProducts(products);
 
 		return new ProcessOrderResponse(order.getId());
 	}
 
-	private void processProducts(Set<Product> products) {
-
-		for (Product p : products) {
-			if (p.getType().equals("NORMAL")) {
-				if (p.getAvailable() > 0) {
-					decrementAndSave(p);
-				} else {
-					int leadTime = p.getLeadTime();
-					if (leadTime > 0) {
-						productService.notifyDelay(leadTime, p);
-					}
-				}
-			} else if (p.getType().equals("SEASONAL")) {
-				// Add new season rules
-				if ((LocalDate.now().isAfter(p.getSeasonStartDate()) && LocalDate.now().isBefore(p.getSeasonEndDate())
-						&& p.getAvailable() > 0)) {
-					decrementAndSave(p);
-				} else {
-					productService.handleSeasonalProduct(p);
-				}
-			} else if (p.getType().equals("EXPIRABLE")) {
-				if (p.getAvailable() > 0 && p.getExpiryDate().isAfter(LocalDate.now())) {
-					decrementAndSave(p);
-				} else {
-					productService.handleExpiredProduct(p);
-				}
-			}
-		}
-
-	}
-
-	private void decrementAndSave(Product p) {
-		p.setAvailable(p.getAvailable() - 1);
-		productService.save(p);
-	}
+	
 }
